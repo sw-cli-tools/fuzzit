@@ -4,9 +4,9 @@ use std::path::Path;
 use anyhow::Context;
 use fz_classify::{classify, signature};
 use fz_core::{CampaignReport, CaseRecord, Classification, Provenance};
-use fz_corpus::{generate_baseline_corpus, CaseInput};
+use fz_corpus::{CaseInput, generate_baseline_corpus};
 use fz_exec::execute;
-use fz_llm::{build_seed_prompt, OllamaClient};
+use fz_llm::{OllamaClient, build_seed_prompt};
 use fz_manifest::parse_manifest;
 
 struct CampaignState {

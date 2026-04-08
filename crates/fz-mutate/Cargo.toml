@@ -5,4 +5,10 @@ edition.workspace = true
 
 [dependencies]
 fz-core = { path = "../fz-core" }
+fz-exec = { path = "../fz-exec" }
+fz-classify = { path = "../fz-classify" }
+anyhow = { workspace = true }
 rand = "0.9"
+
+[dev-dependencies]
+tempfile = { workspace = true }

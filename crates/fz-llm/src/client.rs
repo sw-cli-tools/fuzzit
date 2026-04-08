@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_BASE_URL: &str = "http://localhost:11434";

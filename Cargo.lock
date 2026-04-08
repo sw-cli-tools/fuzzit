@@ -426,8 +426,12 @@ dependencies = [
 name = "fz-mutate"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "fz-classify",
  "fz-core",
+ "fz-exec",
  "rand",
+ "tempfile",
 ]
 
 [[package]]
