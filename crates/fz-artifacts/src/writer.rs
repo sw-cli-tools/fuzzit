@@ -75,13 +75,53 @@ fn format_report(report: &CampaignReport) -> String {
     let mut lines = Vec::new();
     lines.push(format!("# Fuzz Campaign Report: {}", report.target_name));
     lines.push(String::new());
+
+    lines.push("## Target".to_string());
+    lines.push(String::new());
+    lines.push(format!("- Name: {}", report.target_name));
+    lines.push(format!("- Kind: {}", report.target_kind));
+    lines.push(format!("- Entry: {}", report.target_entry));
+    lines.push(format!("- Timeout: {}ms", report.timeout_ms));
+    lines.push(String::new());
+
+    lines.push("## Configuration".to_string());
+    lines.push(String::new());
+    lines.push(format!("- Total budget: {}", report.total_budget));
+    lines.push(format!("- Total executions: {}", report.total_executions));
+    lines.push(String::new());
+
     lines.push("## Summary".to_string());
     lines.push(String::new());
-    lines.push(format!("- Total executions: {}", report.total_executions));
     lines.push(format!("- Crashes: {}", report.crash_count));
     lines.push(format!("- Panics: {}", report.panic_count));
     lines.push(format!("- Hangs: {}", report.hang_count));
     lines.push(format!("- Unique failures: {}", report.unique_failures));
+    lines.push(format!("- Promoted to tests: {}", report.promoted_count));
+    if !report.promoted_dir.is_empty() {
+        lines.push(format!("- Test output: {}", report.promoted_dir));
+    }
+    lines.push(String::new());
+
+    lines.push("## Layer Breakdown".to_string());
+    lines.push(String::new());
+    lines.push("| Layer | Executions | New Findings |".to_string());
+    lines.push("|-------|------------|-------------|".to_string());
+    lines.push(format!(
+        "| Baseline | {} | {} |",
+        report.baseline_stats.executions, report.baseline_stats.new_findings
+    ));
+    lines.push(format!(
+        "| LLM | {} | {} |",
+        report.llm_stats.executions, report.llm_stats.new_findings
+    ));
+    lines.push(format!(
+        "| Mutation | {} | {} |",
+        report.mutation_stats.executions, report.mutation_stats.new_findings
+    ));
+    lines.push(format!(
+        "| Feedback | {} | {} |",
+        report.feedback_stats.executions, report.feedback_stats.new_findings
+    ));
     lines.push(String::new());
 
     if !report.findings.is_empty() {
@@ -94,12 +134,35 @@ fn format_report(report: &CampaignReport) -> String {
             } else {
                 preview.to_string()
             };
+            let timestamp = if finding.discovered_at.is_empty() {
+                String::from("N/A")
+            } else {
+                finding.discovered_at.clone()
+            };
             lines.push(format!(
-                "{}. [{:?}] {}",
+                "{}. [{:?}] {} (via {:?}, {})",
                 i + 1,
                 finding.classification,
-                truncated
+                truncated,
+                finding.provenance,
+                timestamp
             ));
+        }
+    }
+
+    if report.unique_failures > 0 {
+        lines.push(String::new());
+        lines.push("## Recommendations".to_string());
+        lines.push(String::new());
+        lines.push(format!(
+            "- {} crash(es) found, {} promoted to regression tests",
+            report.unique_failures, report.promoted_count
+        ));
+        if report.mutation_stats.new_findings == 0 && report.baseline_stats.executions > 0 {
+            lines.push("- Consider increasing mutation budget for deeper exploration".to_string());
+        }
+        if report.llm_stats.executions == 0 {
+            lines.push("- Enable Ollama for LLM-generated seed diversity".to_string());
         }
     }
 
@@ -114,11 +177,17 @@ mod tests {
     fn sample_report() -> CampaignReport {
         CampaignReport {
             target_name: "test-target".into(),
+            target_kind: "Cli".into(),
+            target_entry: "/bin/test".into(),
+            timeout_ms: 2000,
+            total_budget: 50,
             total_executions: 10,
             crash_count: 2,
             hang_count: 1,
             panic_count: 1,
             unique_failures: 2,
+            promoted_count: 1,
+            promoted_dir: "tests/fuzzit/".into(),
             findings: vec![CaseRecord {
                 input: b"panic input".to_vec(),
                 result: ExecutionResult {
@@ -130,7 +199,13 @@ mod tests {
                 },
                 classification: Classification::Panic,
                 provenance: Provenance::Baseline,
+                discovered_at: "2026-04-08T12:00:00".into(),
             }],
+            baseline_stats: fz_core::LayerStats {
+                executions: 10,
+                new_findings: 1,
+            },
+            ..Default::default()
         }
     }
 
@@ -146,6 +221,7 @@ mod tests {
             },
             classification: Classification::Panic,
             provenance: Provenance::Baseline,
+            discovered_at: String::new(),
         }
     }
 
@@ -200,10 +276,18 @@ mod tests {
         write_report(&dir, &report).unwrap();
         let content = std::fs::read_to_string(dir.join("report.md")).unwrap();
         assert!(content.contains("test-target"));
+        assert!(content.contains("Target"));
+        assert!(content.contains("Configuration"));
         assert!(content.contains("Summary"));
         assert!(content.contains("Total executions: 10"));
+        assert!(content.contains("Layer Breakdown"));
+        assert!(content.contains("Baseline"));
+        assert!(content.contains("Mutation"));
         assert!(content.contains("Findings"));
         assert!(content.contains("[Panic]"));
+        assert!(content.contains("via Baseline"));
+        assert!(content.contains("Recommendations"));
+        assert!(content.contains("Recommendations"));
     }
 
     #[test]
@@ -253,6 +337,7 @@ mod tests {
             },
             classification: Classification::Success,
             provenance: Provenance::Baseline,
+            discovered_at: String::new(),
         };
         write_case(&dir, 2, b"ok", &record).unwrap();
         assert!(!dir.join("crashes/case_0002.txt").exists());
@@ -284,16 +369,25 @@ mod tests {
         let dir = init_output_dir(tmp.path()).unwrap();
         let report = CampaignReport {
             target_name: "clean".into(),
+            target_kind: "Cli".into(),
+            target_entry: "/bin/clean".into(),
+            timeout_ms: 1000,
+            total_budget: 5,
             total_executions: 5,
             crash_count: 0,
             hang_count: 0,
             panic_count: 0,
             unique_failures: 0,
+            promoted_count: 0,
+            promoted_dir: String::new(),
             findings: vec![],
+            ..Default::default()
         };
         write_report(&dir, &report).unwrap();
         let content = std::fs::read_to_string(dir.join("report.md")).unwrap();
         assert!(content.contains("clean"));
-        assert!(!content.contains("Findings"));
+        assert!(!content.contains("## Findings"));
+        assert!(content.contains("Layer Breakdown"));
+        assert!(!content.contains("Recommendations"));
     }
 }

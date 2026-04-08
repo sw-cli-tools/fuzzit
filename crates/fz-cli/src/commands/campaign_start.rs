@@ -3,10 +3,10 @@ use std::path::Path;
 
 use anyhow::Context;
 use fz_classify::{classify, signature};
-use fz_core::{CampaignReport, CaseRecord, Classification, Provenance};
-use fz_corpus::{CaseInput, generate_baseline_corpus};
+use fz_core::{CampaignReport, CaseRecord, Classification, LayerStats, Provenance};
+use fz_corpus::{generate_baseline_corpus, CaseInput};
 use fz_exec::execute;
-use fz_llm::{OllamaClient, build_seed_prompt};
+use fz_llm::{build_seed_prompt, OllamaClient};
 use fz_manifest::parse_manifest;
 
 struct CampaignState {
@@ -57,6 +57,7 @@ impl CampaignState {
                 result,
                 classification,
                 provenance,
+                discovered_at: chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string(),
             });
         }
     }
@@ -218,12 +219,28 @@ pub fn start_campaign(
     // Report
     let report = CampaignReport {
         target_name: target.name.clone(),
+        target_kind: format!("{:?}", target.kind),
+        target_entry: target.entry.display().to_string(),
+        timeout_ms: target.timeout_ms,
+        total_budget,
         total_executions: state.total_executions,
         crash_count: state.crash_count,
         hang_count: state.hang_count,
         panic_count: state.panic_count,
         unique_failures: state.findings.len(),
+        promoted_count: 0,
+        promoted_dir: String::new(),
         findings: state.findings,
+        baseline_stats: LayerStats {
+            executions: baseline_budget.min(corpus.len()),
+            new_findings: 0,
+        },
+        llm_stats: LayerStats::default(),
+        mutation_stats: LayerStats {
+            executions: mutation_budget,
+            new_findings: 0,
+        },
+        feedback_stats: LayerStats::default(),
     };
 
     let output_dir = std::path::PathBuf::from("artifacts").join(format!(

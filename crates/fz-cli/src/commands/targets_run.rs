@@ -50,6 +50,7 @@ pub fn run_targets(manifest_path: &Path) -> anyhow::Result<()> {
                 result,
                 classification,
                 provenance: Provenance::Baseline,
+                discovered_at: chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string(),
             });
         }
 
@@ -79,12 +80,23 @@ pub fn run_targets(manifest_path: &Path) -> anyhow::Result<()> {
 
     let report = CampaignReport {
         target_name: target.name.clone(),
+        target_kind: format!("{:?}", target.kind),
+        target_entry: target.entry.display().to_string(),
+        timeout_ms: target.timeout_ms,
+        total_budget: corpus.len(),
         total_executions,
         crash_count,
         hang_count,
         panic_count,
-        unique_failures,
-        findings,
+        unique_failures: findings.len(),
+        promoted_count: 0,
+        promoted_dir: String::new(),
+        findings: findings.clone(),
+        baseline_stats: fz_core::LayerStats {
+            executions: corpus.len(),
+            new_findings: findings.len(),
+        },
+        ..Default::default()
     };
 
     let output_dir = std::path::PathBuf::from("artifacts").join(format!(

@@ -52,17 +52,63 @@ pub struct CaseRecord {
     pub result: ExecutionResult,
     pub classification: Classification,
     pub provenance: Provenance,
+    #[serde(default)]
+    pub discovered_at: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LayerStats {
+    pub executions: usize,
+    pub new_findings: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CampaignReport {
     pub target_name: String,
+    pub target_kind: String,
+    pub target_entry: String,
+    pub timeout_ms: u64,
+    pub total_budget: usize,
     pub total_executions: usize,
     pub crash_count: usize,
     pub hang_count: usize,
     pub panic_count: usize,
     pub unique_failures: usize,
+    pub promoted_count: usize,
+    pub promoted_dir: String,
     pub findings: Vec<CaseRecord>,
+    #[serde(default)]
+    pub baseline_stats: LayerStats,
+    #[serde(default)]
+    pub llm_stats: LayerStats,
+    #[serde(default)]
+    pub mutation_stats: LayerStats,
+    #[serde(default)]
+    pub feedback_stats: LayerStats,
+}
+
+impl Default for CampaignReport {
+    fn default() -> Self {
+        Self {
+            target_name: String::new(),
+            target_kind: String::new(),
+            target_entry: String::new(),
+            timeout_ms: 2000,
+            total_budget: 0,
+            total_executions: 0,
+            crash_count: 0,
+            hang_count: 0,
+            panic_count: 0,
+            unique_failures: 0,
+            promoted_count: 0,
+            promoted_dir: String::new(),
+            findings: Vec::new(),
+            baseline_stats: LayerStats::default(),
+            llm_stats: LayerStats::default(),
+            mutation_stats: LayerStats::default(),
+            feedback_stats: LayerStats::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
