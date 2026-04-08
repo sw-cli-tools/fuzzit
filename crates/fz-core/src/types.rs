@@ -38,6 +38,15 @@ pub enum Classification {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExecutionResult {
+    pub exit_code: Option<i32>,
+    pub stdout: Vec<u8>,
+    pub stderr: String,
+    pub wall_time_ms: u64,
+    pub killed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Oracle {
     pub success_exit_codes: Vec<i32>,
     pub failure_exit_codes: Vec<i32>,
