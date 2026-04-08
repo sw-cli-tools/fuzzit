@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub struct CaseInput {
     pub data: Vec<u8>,
     pub description: String,

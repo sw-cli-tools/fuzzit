@@ -352,6 +352,7 @@ dependencies = [
  "fz-llm",
  "fz-manifest",
  "fz-mutate",
+ "rand",
  "serde_json",
 ]
 

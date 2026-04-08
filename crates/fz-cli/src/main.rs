@@ -80,11 +80,9 @@ fn main() -> anyhow::Result<()> {
             }
         },
         Commands::Campaigns { action } => match action {
-            CampaignsAction::Start {
-                manifest: _,
-                budget: _,
-            } => {
-                anyhow::bail!("campaigns start not yet implemented");
+            CampaignsAction::Start { manifest, budget } => {
+                let path = std::path::Path::new(&manifest);
+                commands::start_campaign(path, budget, "llama3")?;
             }
             CampaignsAction::Report { dir } => {
                 let dir = std::path::Path::new(&dir);
