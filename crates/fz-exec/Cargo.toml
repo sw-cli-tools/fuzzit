@@ -1,0 +1,9 @@
+[package]
+name = "fz-exec"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+fz-core = { path = "../fz-core" }
+anyhow = { workspace = true }
+tempfile = { workspace = true }

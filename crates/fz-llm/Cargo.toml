@@ -1,0 +1,11 @@
+[package]
+name = "fz-llm"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+fz-core = { path = "../fz-core" }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }

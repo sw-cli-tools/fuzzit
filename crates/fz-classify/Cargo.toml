@@ -1,0 +1,7 @@
+[package]
+name = "fz-classify"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+fz-core = { path = "../fz-core" }

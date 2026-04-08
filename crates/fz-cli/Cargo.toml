@@ -1,0 +1,16 @@
+[package]
+name = "fuzzit"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+fz-core = { path = "../fz-core" }
+fz-manifest = { path = "../fz-manifest" }
+fz-corpus = { path = "../fz-corpus" }
+fz-exec = { path = "../fz-exec" }
+fz-classify = { path = "../fz-classify" }
+fz-mutate = { path = "../fz-mutate" }
+fz-llm = { path = "../fz-llm" }
+fz-artifacts = { path = "../fz-artifacts" }
+clap = { workspace = true }
+anyhow = { workspace = true }

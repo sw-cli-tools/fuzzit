@@ -1,0 +1,1039 @@
+
+
+
+
+I've been doing a lot of vibe coding and I specify TDD and use of my regression test framework, so some "vibe testing" but now I want to enable "vibe maintenance" and "vibe fuzzing" via new Rust tools.  For vibe maintenance I want the tool to check a list of github repos looking for open issues, analyze the issue, suggest a plan for fixing it or why the issue should be closed (working as designed, not reproducible, duplicate of closed issue, won't fix, etc.).    For vibe fuzzing, I want a tool that uses an AI Agent (local or LAN-based Ollama running a coding model) to generate fuzz tests (test random, empty, very long, weird encodings, escape sequences, negative numbers, large numbers, etc. to exercise APIs. UIs acn complilers, or other tools that take text input.
+
+You want two new Rust tools that fit your existing agent-heavy workflow:
+
+Vibe maintenance: scan a set of GitHub repos, find open issues, analyze each one, and produce either a fix plan or a close/decline rationale.
+
+Vibe fuzzing: use an AI coding agent, ideally local or LAN-hosted via Ollama, to generate and evolve fuzz-style tests for APIs, UIs, compilers, and other text-input-driven systems.
+
+The right way to approach this is to treat both as controlled orchestration systems, not just “LLM wrappers.” The LLM should propose, classify, and generate artifacts, but deterministic Rust code should own repo discovery, issue ingestion, test execution, result scoring, caching, rate limiting, safety rails, and report generation.
+
+1. Architecture
+Goals
+You want both tools to:
+
+integrate with your Rust-first workflow
+
+work well with local/LAN models
+
+be testable and reproducible
+
+support human review before acting
+
+use existing regression tests where possible
+
+produce artifacts that are useful even when the model is wrong
+
+Nonfunctional requirements
+The important nonfunctional constraints are:
+
+Determinism where possible: same inputs should produce comparable outputs
+
+Auditability: store prompts, model answers, repo state, test outputs, and decisions
+
+Isolation: repo execution and fuzzing must not corrupt source trees or machines
+
+Cost control: support local/Ollama first, with optional fallbacks
+
+Incrementality: don’t re-analyze every issue or regenerate every fuzz target each run
+
+Safe autonomy: default to “propose” and “draft” rather than auto-close or auto-merge
+
+2. Recommended split
+I would build this as a single workspace with two top-level tools plus shared crates.
+
+Suggested workspace layout
+vibe-ops/
+  Cargo.toml
+  crates/
+    vo-core/
+    vo-llm/
+    vo-github/
+    vo-sandbox/
+    vo-artifacts/
+    vo-exec/
+    vo-diff/
+    vo-classify/
+  apps/
+    vibe-maint/
+    vibe-fuzz/
+This fits your preference for clear top-level components.
+
+Shared crates
+vo-core
+Common types:
+
+RepoSpec
+
+IssueRecord
+
+IssueAssessment
+
+FixPlan
+
+CloseRecommendation
+
+FuzzTarget
+
+GeneratedTestArtifact
+
+ExecutionResult
+
+CampaignReport
+
+vo-llm
+LLM abstraction layer:
+
+Ollama backend
+
+LiteLLM/OpenAI-compatible backend later if needed
+
+prompt templates
+
+JSON schema enforcement
+
+retries and response validation
+
+vo-github
+GitHub ingestion:
+
+repo enumeration
+
+open issue retrieval
+
+comments / labels / linked PRs
+
+file snapshots around implicated code
+
+optional draft comment / draft issue response generation
+
+vo-sandbox
+Execution isolation:
+
+temp worktree
+
+container / bubblewrap / nsjail / firejail wrapper
+
+resource limits
+
+timeout handling
+
+stdout/stderr capture
+
+vo-exec
+Deterministic tool runners:
+
+cargo test
+
+your regression framework
+
+compiler / CLI / server runners
+
+exit code normalization
+
+flaky test heuristics
+
+vo-artifacts
+Writes JSON, Markdown, diffs, and maybe HTML reports.
+
+vo-classify
+Rule-based first-pass classifiers before LLM use.
+
+vo-diff
+Source patch parsing and summarization.
+
+3. Vibe maintenance design
+Core workflow
+The maintenance tool should not begin by asking the model “what do you think?” It should first build a strong deterministic issue packet.
+
+Pipeline
+Stage A: repo scan
+For each configured repo:
+
+fetch metadata
+
+list open issues
+
+skip issues already analyzed recently unless updated
+
+skip issues labeled blocked, needs-info, etc. if configured
+
+Stage B: issue packet construction
+Build a compact, structured packet:
+
+issue title/body
+
+labels, author, age, comments summary
+
+linked commits/PRs if any
+
+likely impacted files/modules from lexical search
+
+recent failing regression tests if available
+
+prior similar issues
+
+reproduction snippets if present
+
+Stage C: deterministic pre-classification
+Before LLM:
+
+missing reproduction?
+
+stale?
+
+duplicate candidate?
+
+clearly feature request, not bug?
+
+already fixed on main?
+
+needs environment data?
+
+security-sensitive?
+
+This helps decide how much LLM effort is worthwhile.
+
+Stage D: LLM analysis
+Ask the model for one of a few bounded outputs:
+
+fix-plan
+
+needs-more-info
+
+close-as-designed
+
+close-not-reproducible
+
+close-duplicate
+
+close-wont-fix
+
+escalate-human
+
+Require structured JSON, not prose-first.
+
+Stage E: optional local verification
+If applicable:
+
+check out temp worktree
+
+run reproduction steps or narrowed regression suite
+
+search code paths
+
+identify whether the described behavior matches implementation
+
+Stage F: output artifacts
+Produce:
+
+Markdown assessment
+
+machine-readable JSON
+
+optional draft GitHub comment
+
+optional task list for coding agent
+
+confidence score and evidence list
+
+4. Vibe maintenance output shape
+The tool should generate something like this per issue:
+
+{
+  "repo": "org/project",
+  "issue_number": 123,
+  "classification": "fix-plan",
+  "confidence": 0.81,
+  "summary": "Parser rejects escaped newline in single-quoted string literals.",
+  "evidence": [
+    "Issue includes minimal repro",
+    "Behavior reproduced on HEAD",
+    "Regression test missing for lexer escape edge case"
+  ],
+  "fix_plan": {
+    "likely_files": [
+      "src/lexer.rs",
+      "src/token.rs",
+      "tests/strings_escape.rs"
+    ],
+    "steps": [
+      "Add focused failing regression test",
+      "Adjust lexer escape-state handling",
+      "Run parser and regression suites",
+      "Check impact on multiline string parsing"
+    ],
+    "risks": [
+      "May affect quote handling in existing syntax",
+      "Potential ambiguity with raw strings"
+    ]
+  },
+  "close_recommendation": null
+}
+If closure is recommended:
+
+{
+  "classification": "close-not-reproducible",
+  "confidence": 0.67,
+  "requested_followup": [
+    "Ask reporter for exact input sample",
+    "Ask for version and platform"
+  ],
+  "draft_comment": "I couldn't reproduce this on current HEAD using the provided steps..."
+}
+5. Vibe maintenance heuristics
+Use rules first, LLM second.
+
+Strong deterministic signals
+Close likely
+issue is fixed by current HEAD and tests pass
+
+exact duplicate of a still-open or closed issue
+
+issue is actually expected behavior per docs
+
+issue lacks repro after long inactivity and needs-info was requested
+
+Fix likely
+clear repro exists
+
+tool can reproduce locally
+
+failing regression exists or can be generated
+
+affected subsystem is identifiable
+
+Escalate
+security implications
+
+data loss
+
+concurrency / UB / memory corruption
+
+nondeterministic failures
+
+repo too large / context too wide
+
+model uncertainty high
+
+6. Vibe maintenance modes
+I recommend explicit modes:
+
+triage
+Fast pass over many issues. No code execution unless very cheap.
+
+deep-analyze
+One issue or small set. Can clone worktree, run tests, inspect files.
+
+draft-response
+Generate a proposed GitHub comment but do not post.
+
+agent-handoff
+Produce a machine-readable plan for a separate coding agent.
+
+verify-fix
+After a patch exists, validate whether it resolves the issue and what regressions it risks.
+
+7. Vibe fuzzing design
+Your fuzzing tool should not just ask the model to “make weird inputs.” It should treat fuzzing as a loop:
+
+understand input surface
+
+generate candidate tests and generators
+
+execute safely
+
+classify failures
+
+retain interesting cases
+
+mutate and expand
+
+That makes it closer to LLM-guided fuzz campaign generation than plain property-based testing.
+
+8. Vibe fuzzing target model
+Every target should be described by a structured manifest.
+
+Example target manifest
+[target]
+name = "plsw-lexer"
+kind = "cli"
+entry = "./target/debug/plswc"
+input_mode = "stdin"
+timeout_ms = 2000
+
+[oracle]
+success_exit_codes = [0]
+failure_exit_codes = [101, 134, 137, 139]
+capture_stderr = true
+
+[expectations]
+must_not_panic = true
+must_not_hang = true
+must_not_segfault = true
+
+[seeds]
+files = ["seeds/valid_01.txt", "seeds/invalid_01.txt"]
+
+[strategy]
+styles = ["grammarish", "mutation", "boundary", "encoding", "escape-heavy"]
+This is important because the same engine can fuzz:
+
+compilers
+
+interpreters
+
+REPLs
+
+REST APIs
+
+TUIs/UIs
+
+text protocols
+
+config file parsers
+
+9. Vibe fuzzing layers
+Layer 1: deterministic baseline fuzz set
+Before AI, always run a standard corpus:
+
+empty string
+
+whitespace only
+
+one-char inputs
+
+huge input
+
+repeated delimiters
+
+escape sequences
+
+invalid UTF-8 if applicable
+
+UTF-16-like noise
+
+CRLF / CR / LF variations
+
+negative / max / min integer strings
+
+deep nesting
+
+weird identifiers
+
+null bytes if allowed by channel
+
+This catches a lot immediately.
+
+Layer 2: LLM-generated seeds
+Ask the coding model to produce:
+
+edge-case inputs
+
+grammar-ish near-miss inputs
+
+semantic contradictions
+
+malicious-but-valid boundary cases
+
+shrinkable repros after a crash
+
+Layer 3: mutation engine
+Use deterministic Rust mutation operators:
+
+byte flip
+
+token deletion
+
+repetition
+
+splice
+
+nesting growth
+
+numeric boundary substitution
+
+delimiter confusion
+
+encoding variation
+
+Layer 4: feedback loop
+Retain interesting cases based on:
+
+new exit code
+
+new stderr signature
+
+longer runtime
+
+parser phase difference
+
+new stack trace
+
+code coverage if available
+
+10. How the LLM should be used in vibe fuzzing
+The model is best at:
+
+inferring likely grammar
+
+inventing meaningful malformed inputs
+
+hypothesizing weak spots
+
+turning a crash signature into a reduced reproducer
+
+proposing invariants and oracles
+
+generating harness code
+
+The model is bad at being the only mutation engine. So use it for targeted creativity, not for high-frequency mutation.
+
+Good model prompts
+For a compiler
+generate token streams likely to confuse lexing or precedence
+
+produce nested constructs likely to overflow recursion
+
+produce strings with quote/escape ambiguity
+
+produce declarations that stress symbol tables
+
+For APIs
+generate malformed JSON / YAML / query strings
+
+mix encodings and odd Unicode
+
+generate contradictory fields
+
+omit required fields in plausible ways
+
+For UIs
+generate synthetic text events
+
+stress shortcuts, paste buffers, weird line endings
+
+alternate valid and invalid commands
+
+simulate long-field input and rapid changes
+
+11. Harness design for vibe fuzzing
+Preferred approach
+The fuzz tool should generate one or more of:
+
+Rust unit tests
+
+Rust integration tests
+
+corpus files
+
+proptest strategies
+
+libFuzzer/AFL entrypoints
+
+replay cases for regression framework
+
+That way every good failure becomes a permanent asset.
+
+Example output types
+A. regression test file
+#[test]
+fn lexer_rejects_unterminated_escape_sequence_without_panic() {
+    let input = "'abc\\";
+    let result = parse_input(input);
+    assert!(result.is_err());
+}
+B. corpus seed file
+BEGIN "unterminated
+C. proptest harness
+proptest! {
+    #[test]
+    fn parser_never_panics_on_generated_input(s in weird_source_strings()) {
+        let _ = parse_source(&s);
+    }
+}
+D. replay manifest
+{
+  "target": "plsw-parser",
+  "input_file": "artifacts/cases/case_0042.txt",
+  "expected": "must_not_panic"
+}
+12. Suggested fuzzing strategies by target type
+Compilers / interpreters
+Best options:
+
+grammar-inspired generation
+
+token mutation
+
+nesting depth growth
+
+identifier weirdness
+
+escape/quote/pathological numeric literals
+
+parser differential checks
+
+round-trip parse/pretty-print/parse if available
+
+REST / HTTP APIs
+Best options:
+
+JSON field omission/reorder
+
+very large strings
+
+nested arrays/objects
+
+conflicting field types
+
+invalid content-types
+
+query param duplicates
+
+percent encoding / Unicode / nulls
+
+TUIs / editors / REPLs
+Best options:
+
+command sequences
+
+invalid mode transitions
+
+rapid alternation
+
+copy/paste-like text bursts
+
+control character injection
+
+boundary cursor movement
+
+long lines and mixed newlines
+
+Config parsers
+Best options:
+
+duplicate keys
+
+mixed encodings
+
+unterminated quotes
+
+comments in weird places
+
+huge numeric values
+
+invalid escape sequences
+
+recursive includes if supported
+
+13. Relationship to your regression framework
+This is important: your new tooling should convert discoveries into regression assets.
+
+Best model
+Vibe fuzzing
+finds a crash / hang / wrong parse
+
+Then
+converts it into:
+
+a pinned failing case
+
+a minimized corpus file
+
+a regression test
+
+an issue or patch plan
+
+Vibe maintenance
+consumes those issues and can later verify whether the fix actually closed the loop
+
+So the two tools should share artifacts.
+
+14. Data model linking both systems
+A nice unification is this:
+
+issues can spawn fuzz campaigns
+
+fuzz campaigns can spawn issues
+
+resolved issues can add canonical regression cases
+
+regressions can re-open closed assumptions
+
+Example flow
+maintenance tool sees issue: “parser crashes on weird string”
+
+tool classifies as fixable and suggests files
+
+fuzz tool generates boundary cases around that parser subsystem
+
+one case crashes reproducibly
+
+tool writes regression test and artifact
+
+coding agent patches code
+
+maintenance tool drafts issue response with evidence
+
+That is a solid “vibe maintenance + vibe fuzzing” story.
+
+15. Safety and sandboxing
+This matters a lot for both tools.
+
+For repo execution
+Use:
+
+temp clones or git worktrees
+
+read-only source mount if possible
+
+artifact output to separate directory
+
+CPU / memory / wall-time limits
+
+network disabled by default
+
+no secrets in environment
+
+clear allowlist of commands
+
+For LLM-generated test code
+Never execute raw generated code immediately inside the main repo. Instead:
+
+validate output shape
+
+place in isolated temp dir
+
+compile only
+
+review imports and capabilities
+
+optionally run under stricter sandbox
+
+then copy into repo as draft artifact
+
+For test harness generation, prefer constrained templates where the model fills holes rather than writing arbitrary runtime code.
+
+16. Choosing model roles
+For maintenance
+Use a reasoning-capable coding/instruction model for:
+
+issue classification
+
+plan generation
+
+close rationale draft
+
+suggested reproduction steps
+
+A medium-sized local coding model is often enough if the issue packet is well-prepared.
+
+For fuzzing
+Use coding model for:
+
+test harness generation
+
+grammar inference
+
+targeted bad-case synthesis
+
+crash triage and minimization suggestions
+
+You do not need the largest model for high-throughput campaigns. Better to have:
+
+one “planner” model
+
+one deterministic Rust engine
+
+optional one “repair” model later
+
+17. CLI shape
+vibe-maint
+Example commands:
+
+vibe-maint repos scan --config repos.toml
+vibe-maint issues triage --repo sw-embed/sw-cor24-pcode
+vibe-maint issues analyze --repo sw-embed/sw-cor24-pcode --issue 42
+vibe-maint issues draft-response --repo sw-embed/sw-cor24-pcode --issue 42
+vibe-maint issues handoff --repo sw-embed/sw-cor24-pcode --issue 42
+vibe-fuzz
+vibe-fuzz targets run --manifest targets/plsw-parser.toml
+vibe-fuzz targets generate --manifest targets/plsw-parser.toml
+vibe-fuzz campaigns start --manifest targets/plsw-parser.toml --budget 500
+vibe-fuzz cases minimize --case artifacts/cases/case_0042.txt
+vibe-fuzz cases promote --case artifacts/cases/case_0042.txt
+18. Report format
+Both tools should write:
+
+*.json for machines
+
+*.md for humans
+
+Example maintenance report sections
+issue summary
+
+likely root cause
+
+evidence
+
+fix plan or close rationale
+
+confidence
+
+next actions
+
+candidate tests to add
+
+Example fuzz report sections
+target summary
+
+campaign config
+
+seeds used
+
+interesting cases found
+
+crashes/hangs
+
+minimized repros
+
+generated regression tests
+
+suggested fixes or code hotspots
+
+19. Pros and cons of this approach
+Benefits
+Strong separation of concerns
+Rust handles reliability; LLM handles synthesis and interpretation.
+
+Reproducibility
+Everything gets stored as artifacts.
+
+Works with local/LAN Ollama
+No dependence on cloud-only flows.
+
+Fits your existing TDD style
+Fuzz findings become real regression assets.
+
+Extendable
+You can later add auto-patch, auto-PR, and issue-comment draft modes.
+
+Risks
+Prompt drift / inconsistent classifications
+Mitigate with structured schemas and deterministic pre-classification.
+
+Too much model context
+Mitigate by building compact issue packets and file excerpts.
+
+Executing dangerous generated code
+Mitigate with sandboxing and template-based harness generation.
+
+False duplicates / premature closure suggestions
+Mitigate by never auto-closing without human review.
+
+Fuzzing noise
+Mitigate with deduplication, minimization, and interest heuristics.
+
+20. Alternatives
+Alternative A: Use existing fuzzers directly, no LLM
+Use cargo-fuzz, libFuzzer, AFL++, proptest only.
+
+Pros
+mature
+
+deterministic
+
+good coverage workflows
+
+Cons
+weak at inventing domain-specific malformed text
+
+less useful for issue triage
+
+not as good at converting symptoms to human-readable plans
+
+This is still worth using underneath your system.
+
+Alternative B: Use a generic agent framework only
+Let an agent scan issues and write fuzz tests.
+
+Pros
+fast to prototype
+
+Cons
+weak reproducibility
+
+hard to audit
+
+tends to degrade into prompt spaghetti
+
+poor failure isolation
+
+I would not make this the core architecture.
+
+Alternative C: Separate tools per repo
+Each repo owns its own issue-triage and fuzz scripts.
+
+Pros
+repo-specific tuning
+
+Cons
+duplicated logic
+
+hard to maintain
+
+inconsistent outputs
+
+Better to build one reusable engine with per-repo manifests.
+
+21. Recommended MVP
+MVP for vibe maintenance
+Phase 1
+repo config file
+
+GitHub open issue fetch
+
+deterministic issue packet builder
+
+LLM classification into bounded categories
+
+Markdown + JSON report
+
+no write-back to GitHub yet
+
+Phase 2
+code search around implicated files
+
+run narrowed regression suite
+
+draft comment generation
+
+cache prior analyses
+
+Phase 3
+agent handoff package
+
+verify-on-HEAD mode
+
+duplicate detection using embeddings or lexical similarity
+
+MVP for vibe fuzzing
+Phase 1
+manifest-driven target description
+
+deterministic baseline edge corpus
+
+execute target safely
+
+collect crashes/hangs
+
+promote case to regression artifact
+
+Phase 2
+LLM-generated edge cases
+
+template-based Rust test generation
+
+minimization
+
+dedup by stderr/backtrace/exit signature
+
+Phase 3
+grammar-aware generation
+
+code-coverage feedback
+
+subsystem-targeted campaigns
+
+issue auto-creation/drafting
+
+22. Recommended internal methodology
+For both tools, use a strict loop:
+
+Observe
+collect repo/issue/target facts
+
+Hypothesize
+LLM proposes classification, weak spots, or test ideas
+
+Verify
+run deterministic commands
+
+Distill
+write a stable artifact
+
+Promote
+convert interesting outputs into regression tests, issue drafts, or task plans
+
+That loop is much more robust than “ask the agent to do everything.”
+
+23. My concrete recommendation
+If you want the best payoff:
+
+Build vibe-maint first
+because it gives immediate leverage across multiple repos and helps prioritize what deserves fuzzing.
+
+Then:
+
+Build vibe-fuzz so that it emits regression-ready artifacts
+not just logs and crash dumps.
+
+And architect them so that:
+
+vibe-maint can request a fuzz campaign for an issue
+
+vibe-fuzz can file a machine-readable issue packet for maintenance review
+
+That gives you a closed loop between triage, test generation, reproduction, and long-term maintenance.
+
+24. Best-first implementation order
+shared types and artifact writer
+
+Ollama client with JSON-schema output enforcement
+
+GitHub issue fetch + repo config
+
+maintenance triage report generator
+
+manifest-driven fuzz target runner
+
+deterministic baseline corpus generation
+
+crash artifact promotion into regression cases
+
+LLM-generated fuzz seeds
+
+issue-to-fuzz and fuzz-to-issue linking
+
+25. Opinionated defaults
+I would make these the defaults:
+
+default mode is read-only
+
+draft, never auto-comment
+
+draft, never auto-close
+
+sandbox everything executable
+
+save every prompt + response
+
+require structured output
+
+promote every useful fuzz case to regression form
+
+prefer small local models for throughput
+
+use larger model only for deep issue analysis
+
+If you want, I can turn this into a concrete Rust workspace plan with crate boundaries, core structs, example repos.toml, example target manifests, and the first CLI skeleton for both tools.
+
+
+
+
+

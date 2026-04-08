@@ -1,0 +1,10 @@
+[package]
+name = "fz-manifest"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+fz-core = { path = "../fz-core" }
+anyhow = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }

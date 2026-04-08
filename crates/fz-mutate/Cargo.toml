@@ -1,0 +1,8 @@
+[package]
+name = "fz-mutate"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+fz-core = { path = "../fz-core" }
+rand = "0.9"
