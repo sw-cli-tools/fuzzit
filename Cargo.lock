@@ -342,6 +342,7 @@ name = "fuzzit"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "fz-artifacts",
  "fz-classify",
@@ -351,6 +352,7 @@ dependencies = [
  "fz-llm",
  "fz-manifest",
  "fz-mutate",
+ "serde_json",
 ]
 
 [[package]]
@@ -362,6 +364,7 @@ dependencies = [
  "fz-core",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

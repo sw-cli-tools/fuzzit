@@ -14,3 +14,5 @@ fz-llm = { path = "../fz-llm" }
 fz-artifacts = { path = "../fz-artifacts" }
 clap = { workspace = true }
 anyhow = { workspace = true }
+chrono = "0.4"
+serde_json = { workspace = true }

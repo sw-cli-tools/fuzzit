@@ -47,6 +47,25 @@ pub struct ExecutionResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CaseRecord {
+    pub input: Vec<u8>,
+    pub result: ExecutionResult,
+    pub classification: Classification,
+    pub provenance: Provenance,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CampaignReport {
+    pub target_name: String,
+    pub total_executions: usize,
+    pub crash_count: usize,
+    pub hang_count: usize,
+    pub panic_count: usize,
+    pub unique_failures: usize,
+    pub findings: Vec<CaseRecord>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Oracle {
     pub success_exit_codes: Vec<i32>,
     pub failure_exit_codes: Vec<i32>,
