@@ -1,0 +1,19 @@
+# Example: Fuzzing a JSON API endpoint
+[target]
+name = "json-api"
+kind = "api"
+entry = "./scripts/query_api.sh"
+input_mode = "stdin"
+timeout_ms = 3000
+
+[oracle]
+success_exit_codes = [0]
+failure_exit_codes = [1, 2]
+
+[expectations]
+must_not_panic = true
+must_not_hang = true
+must_not_segfault = true
+
+[strategy]
+styles = ["encoding", "escape-heavy", "boundary"]

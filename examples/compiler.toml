@@ -1,0 +1,25 @@
+# Example: Fuzzing a C compiler
+[target]
+name = "gcc"
+kind = "cli"
+entry = "/usr/bin/gcc"
+input_mode = "file"
+timeout_ms = 5000
+
+[oracle]
+success_exit_codes = [0]
+failure_exit_codes = [1]
+
+[expectations]
+must_not_panic = true
+must_not_hang = true
+must_not_segfault = true
+
+[seeds]
+files = [
+    "examples/seeds/valid_c.c",
+    "examples/seeds/minimal_c.c",
+]
+
+[strategy]
+styles = ["grammarish", "boundary", "encoding"]

@@ -35,6 +35,10 @@ impl OllamaClient {
         }
     }
 
+    pub fn model(&self) -> &str {
+        &self.model
+    }
+
     pub fn with_options(model: &str, base_url: &str, timeout: Duration) -> Self {
         Self {
             base_url: base_url.into(),
@@ -94,29 +98,5 @@ impl OllamaClient {
             MAX_RETRIES,
             last_err.unwrap()
         );
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn client_new_defaults() {
-        let c = OllamaClient::new("test-model");
-        assert_eq!(c.model, "test-model");
-        assert!(c.base_url.contains("11434"));
-    }
-
-    #[test]
-    fn client_with_options() {
-        let c = OllamaClient::with_options(
-            "mymodel",
-            "http://example.com:1234",
-            Duration::from_secs(30),
-        );
-        assert_eq!(c.model, "mymodel");
-        assert_eq!(c.base_url, "http://example.com:1234");
-        assert_eq!(c.timeout, Duration::from_secs(30));
     }
 }

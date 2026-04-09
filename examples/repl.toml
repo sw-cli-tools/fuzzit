@@ -1,0 +1,18 @@
+# Example: Fuzzing a Python REPL
+[target]
+name = "python"
+kind = "repl"
+entry = "/usr/bin/python3"
+input_mode = "stdin"
+timeout_ms = 2000
+
+[oracle]
+success_exit_codes = [0]
+
+[expectations]
+must_not_panic = true
+must_not_hang = true
+must_not_segfault = true
+
+[strategy]
+styles = ["grammarish", "boundary", "encoding", "escape-heavy"]

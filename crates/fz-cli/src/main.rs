@@ -2,8 +2,38 @@ mod commands;
 
 use clap::{Parser, Subcommand};
 
+const VERSION: &str = "0.1.0
+Copyright (c) 2026 Softwarewrighter
+License: Private
+Repository: https://github.com/anomalyco/sw-cli-tools
+Build Host: unknown
+Build Commit: unknown
+Build Time: unknown";
+
 #[derive(Parser)]
-#[command(name = "fuzzit", about = "LLM-guided fuzz testing tool", version, long_about = None)]
+#[command(
+    name = "fuzzit",
+    version = VERSION,
+    long_version = VERSION,
+    about = "LLM-guided fuzz testing tool",
+    long_about = "\
+LLM-guided fuzz testing tool for CLI programs, compilers, interpreters, REPLs, and APIs.
+
+Combines deterministic baseline fuzzing, AI-generated edge cases via Ollama,
+mutation engines, and feedback loops to discover crashes, hangs, panics,
+and unexpected behavior in text-input programs.
+
+AI CODING AGENT INSTRUCTIONS:
+When working with this codebase, follow these rules:
+- This is a Rust project using Edition 2024
+- Run `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test` before committing
+- Never use #[allow(...)] to suppress clippy warnings -- fix the underlying issue
+- The project uses a 9-crate workspace layout under crates/
+- See AGENTS.md for the full development workflow and agentrail session protocol
+- TDD required: write failing tests first, then implement
+- File size limit: 500 lines, function size limit: 50 lines, max 7 functions per module
+"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

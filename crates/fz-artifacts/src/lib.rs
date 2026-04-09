@@ -1,4 +1,6 @@
 pub mod promote;
+pub mod promote_helpers;
+pub mod report_format;
 pub mod writer;
 
 pub use promote::{promote_batch, promote_to_test};
