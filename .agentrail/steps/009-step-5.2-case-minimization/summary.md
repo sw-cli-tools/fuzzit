@@ -1,0 +1,1 @@
+Implemented case minimization in fz-mutate with binary search algorithm: tries removing halves and individual bytes to find smallest input preserving same failure signature. Returns original for non-crashing inputs. 5 unit tests. 153 total workspace tests, zero clippy warnings.

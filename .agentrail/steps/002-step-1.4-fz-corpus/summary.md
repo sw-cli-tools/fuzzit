@@ -1,0 +1,1 @@
+Implemented fz-corpus with 12 deterministic edge-case generators (empty, whitespace, single-char, huge, delimiter, escape, invalid-UTF-8, null-byte, newline variants, numeric boundaries, deep nesting, weird identifiers) producing 160+ CaseInput entries. 56 unit tests all passing, zero clippy warnings.

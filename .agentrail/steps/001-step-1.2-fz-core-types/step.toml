@@ -1,0 +1,10 @@
+number = 1
+slug = "step-1.2-fz-core-types"
+status = "pending"
+description = """
+Phase 1, Step 1.2: fz-core shared types
+
+Implement the core types crate at cr..."""
+role = "production"
+context_files = []
+created_at = "2026-04-08T13:28:37"

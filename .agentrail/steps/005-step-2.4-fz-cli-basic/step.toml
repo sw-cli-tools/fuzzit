@@ -1,0 +1,11 @@
+number = 5
+slug = "step-2.4-fz-cli-basic"
+status = "completed"
+description = """
+Phase 2, Step 2.4: fz-cli basic CLI skeleton
+
+Implement the basic CLI entrypo..."""
+role = "production"
+context_files = []
+created_at = "2026-04-08T13:28:51"
+completed_at = "2026-04-08T13:58:43"

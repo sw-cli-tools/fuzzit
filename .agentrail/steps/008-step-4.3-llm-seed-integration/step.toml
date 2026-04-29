@@ -1,0 +1,11 @@
+number = 8
+slug = "step-4.3-llm-seed-integration"
+status = "completed"
+description = """
+Phase 4, Step 4.3: LLM seed integration with campaigns
+
+Wire LLM seed generat..."""
+role = "production"
+context_files = []
+created_at = "2026-04-08T13:29:22"
+completed_at = "2026-04-08T14:27:03"

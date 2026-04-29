@@ -1,0 +1,11 @@
+number = 1
+slug = "step-1.1-workspace-scaffold"
+status = "completed"
+description = """
+Phase 1, Step 1.1: Workspace scaffold
+
+Convert the single-package Cargo.toml ..."""
+role = "production"
+context_files = []
+created_at = "2026-04-08T13:28:37"
+completed_at = "2026-04-08T13:34:23"

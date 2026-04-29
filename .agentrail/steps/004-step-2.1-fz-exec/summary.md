@@ -1,0 +1,1 @@
+Implemented fz-exec with execute() API spawning child processes. Supports stdin/args/file input modes, captures stdout/stderr/exit code/wall time. Added ExecutionResult struct to fz-core. 8 unit tests using shell script targets, all passing. 80 total workspace tests, zero clippy warnings.

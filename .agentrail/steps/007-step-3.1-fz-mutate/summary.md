@@ -1,0 +1,1 @@
+Implemented fz-mutate with 9 deterministic mutation operators: byte_flip, bit_flip, delete_token, duplicate_token, splice, nest, numeric_substitute, delimiter_confuse, encoding_corrupt. Public API: mutate() for random selection, mutate_n() for batch. All operators handle empty input gracefully. 28 unit tests. 138 total workspace tests, zero clippy warnings.

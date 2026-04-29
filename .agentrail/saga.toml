@@ -1,0 +1,5 @@
+name = "Build fuzzit: LLM-guided fuzz testing tool"
+status = "completed"
+current_step = 12
+created_at = "2026-04-08T13:28:20"
+plan_file = ".agentrail/plan.md"

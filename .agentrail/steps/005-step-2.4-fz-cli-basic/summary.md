@@ -1,0 +1,1 @@
+Implemented fz-cli with clap subcommands (targets run/generate, campaigns start/report). Built end-to-end pipeline: manifest->corpus->exec->classify->artifacts. Also implemented fz-classify (deterministic failure classification, 10 tests) and fz-artifacts (JSON+Markdown reports, 4 tests). Added CaseRecord and CampaignReport to fz-core. 102 total tests, zero clippy warnings.

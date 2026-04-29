@@ -1,0 +1,1 @@
+Completed fz-artifacts with full API: init_output_dir, write_report, write_case, write_corpus_seed. Cases include metadata JSON, crashes auto-copied to crashes/ dir, corpus seeds in corpus/ dir. Markdown report handles empty findings gracefully. 12 unit tests. 110 total workspace tests, zero clippy warnings.

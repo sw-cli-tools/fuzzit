@@ -1,0 +1,10 @@
+number = 7
+slug = "step-4.2-prompt-templates"
+status = "pending"
+description = """
+Phase 4, Step 4.2: Prompt templates for LLM seed generation
+
+Implement prompt..."""
+role = "production"
+context_files = []
+created_at = "2026-04-08T13:29:08"

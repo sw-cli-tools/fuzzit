@@ -1,0 +1,1 @@
+Step 5.3 regression test promotion already implemented in previous session. Verified: 10 promotion tests pass (promote_to_test, promote_batch, input escaping, metadata comments, duplicate skipping, directory creation, invalid UTF8 handling). All 155 tests pass, zero clippy warnings.

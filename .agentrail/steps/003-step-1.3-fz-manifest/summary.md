@@ -1,0 +1,1 @@
+Added FuzzTarget, Oracle, Expectations, Strategy structs to fz-core with serde, validation, and 8 tests. Implemented fz-manifest TOML parsing with parse_manifest() API, sensible defaults, clear error messages, and 8 tests. 72 total tests passing, zero clippy warnings.

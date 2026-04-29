@@ -1,0 +1,11 @@
+number = 2
+slug = "step-1.4-fz-corpus"
+status = "completed"
+description = """
+Phase 1, Step 1.4: fz-corpus baseline edge corpus
+
+Implement the baseline cor..."""
+role = "production"
+context_files = []
+created_at = "2026-04-08T13:28:37"
+completed_at = "2026-04-08T13:40:35"
